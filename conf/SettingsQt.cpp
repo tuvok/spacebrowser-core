@@ -24,10 +24,9 @@ std::optional<Rectangle> Settings::getGeometry()
 
 void Settings::setGeometry(Rectangle r)
 {
-    QSettings settings;
+    QSettings settings(orgName.c_str(), appName.c_str());
     QRect qr{std::get<0>(r), std::get<1>(r), std::get<2>(r), std::get<3>(r)};
 
     settings.setValue(conf::MainWindow::geometry, qr);
 }
-
-}
+} // namespace conf

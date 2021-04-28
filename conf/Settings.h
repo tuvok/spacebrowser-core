@@ -18,11 +18,12 @@ class Settings
     inline static const std::string orgName{"SpaceFoundation"};
     inline static const std::string appName{"SpaceBrowser"};
 
+    static void initialize();
+    static void save();
 public:
 
     /**
      * Returns last saved main window geometry if available
-     * @return
      */
     static std::optional<Rectangle> getGeometry();
 
