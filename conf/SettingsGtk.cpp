@@ -67,8 +67,6 @@ void Settings::save()
     filename /= appName;
     filename += ".json";
 
-    std::cout << "saving to: " << filename.string() << std::endl;
-
     std::string conf = js::serialize(*config);
 
     std::ofstream configFile;
