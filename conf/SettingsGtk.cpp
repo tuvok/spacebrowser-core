@@ -1,12 +1,12 @@
-#include "Settings.h"
+#include <conf/Settings.h>
 
-#include <glibmm.h>
+#include <log/log.h>
 
 #include <boost/json/src.hpp>
+#include <glibmm.h>
+
 #include <fstream>
 #include <filesystem>
-
-#include <iostream>
 
 namespace conf
 {
@@ -51,8 +51,8 @@ void Settings::initialize()
             config = value.as_object();
     }
     catch (std::exception& e)
-    {// FIXME: add proper logging library
-        std::cout << "failed parsing config: " << e.what() << std::endl;
+    {
+        logging::error(std::string{"failed parsing config: "} + e.what());
         return;
     }
 }
@@ -72,7 +72,7 @@ void Settings::save()
     std::ofstream configFile;
     configFile.open(filename);
     if (configFile.fail()) {
-        std::cout << "errno: " << strerror(errno) << std::endl;
+        logging::error(std::string{"Failed opening file: "} + strerror(errno));
     }
     configFile << conf << std::endl;
 }
