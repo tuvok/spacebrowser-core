@@ -2,6 +2,10 @@
 #ifndef CONF_CONF_H_
 #define CONF_CONF_H_
 
+/**
+ * This file defines configuration keys as used by SettingsQt.cpp implementation
+ */
+
 namespace conf
 {
 namespace MainWindow

@@ -23,15 +23,36 @@ namespace js = boost::json;
 ///             "w": int,
 ///             "h": int
 ///         }
-///     }
+///     },
+///     "Databases": [
+///         {
+///             "id": 12345,
+///             "connName": "",
+///             "hostname": "",
+///             "port": 12345,
+///             "dbName": "",
+///             "schemaName": "",
+///             "username": "",
+///             "password": "",
+///             "gpgKey": ""
+///         },
+///           ...
+///     ],
 /// }
 ///
 ///
 ///
+
+/// global variable for storing config copy in memory:
 std::optional<js::object> config = std::nullopt;
+/// TODO: if few instances of browser will be started up, then it might be useful to get
+///       notifications from system on the file being modified, to synchronize some configs,
+///       especially list of database backends
+
 
 void Settings::initialize()
 {
+    /// Find configuration file
     fs::path filename{Glib::get_user_config_dir()};
     filename /= orgName;
     filename /= appName;
@@ -40,10 +61,12 @@ void Settings::initialize()
     if (!fs::exists(filename))
         return;
 
+    /// Load contents
     std::ifstream configFile(filename);
     std::string conf((std::istreambuf_iterator<char>(configFile)),
                      std::istreambuf_iterator<char>());
 
+    /// Parse configuration file as json
     try
     {
         auto value = js::parse(conf);
@@ -62,19 +85,103 @@ void Settings::save()
     if (!config)
         return;
 
+    /// Prepare output path and filename
     fs::path filename{Glib::get_user_config_dir()};
     filename /= orgName;
     filename /= appName;
     filename += ".json";
 
+    /// Serialize
     std::string conf = js::serialize(*config);
 
+    /// Write file to permanent storage
     std::ofstream configFile;
     configFile.open(filename);
     if (configFile.fail()) {
         logging::error(std::string{"Failed opening file: "} + strerror(errno));
     }
     configFile << conf << std::endl;
+}
+
+std::vector<DbConfig> Settings::getDbConfiguration()
+{
+    if (!config)
+        initialize();
+
+    if (!config)
+        return {};
+
+    if (auto dbs = (*config).if_contains("Databases");
+        !dbs || !dbs->is_array())
+        return {};
+    else
+    {
+        std::vector<DbConfig> results;
+
+        for (auto db: dbs->as_array())
+        {
+            DbConfig dbc;
+            auto dbo = db.as_object();
+
+            if (dbo.contains("id"))
+                dbc.id = dbo["id"].as_uint64();
+            if (dbo.contains("connName"))
+                dbc.connName = dbo["connName"].as_string().c_str();
+            if (dbo.contains("hostname"))
+                dbc.hostname = dbo["hostname"].as_string().c_str();
+            if (dbo.contains("port"))
+                dbc.port = dbo["port"].as_uint64();
+            if (dbo.contains("dbName"))
+                dbc.dbName = dbo["dbName"].as_string().c_str();
+            if (dbo.contains("schemaName"))
+                dbc.schemaName = dbo["schemaName"].as_string().c_str();
+            if (dbo.contains("username"))
+                dbc.username = dbo["username"].as_string().c_str();
+            if (dbo.contains("password"))
+                dbc.password = dbo["password"].as_string().c_str();
+            if (dbo.contains("gpgKey"))
+                dbc.gpgKey = dbo["gpgKey"].as_string().c_str();
+
+            results.push_back(dbc);
+        }
+
+        return results;
+    }
+
+}
+
+void Settings::setDbConfiguration(std::vector<DbConfig> dbConfig)
+{
+    if (!config)
+        Settings::initialize();
+
+    if (!config)
+        config = js::object();
+
+    js::value& db = (*config)["Databases"];
+    if (!db.is_array())
+        db = js::array();
+    js::array& dbo = db.as_array();
+    dbo.clear();
+
+    for (auto& dbc: dbConfig)
+    {
+        auto jsobj = js::object();
+
+        jsobj["id"] = dbc.id;
+        jsobj["connName"] = dbc.connName;
+        jsobj["hostname"] = dbc.hostname;
+        jsobj["port"] = dbc.port;
+        jsobj["dbName"] = dbc.dbName;
+        jsobj["schemaName"] = dbc.schemaName;
+        jsobj["username"] = dbc.username;
+        jsobj["password"] = dbc.password;
+        jsobj["gpgKey"] = dbc.gpgKey;
+
+        dbo.push_back(jsobj);
+    }
+
+    save();
 }
 
 std::optional<Rectangle> Settings::getGeometry()
